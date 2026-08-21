@@ -1,6 +1,22 @@
-import { FullPageSpinner } from "@/src/components/Spinner";
+'use client';
 
-// AuthGuard (in the root layout) handles redirecting to /dashboard or /login.
+import { useEffect } from 'react';
+import { useAuth } from '@/lib/authContext';
+import { useRouter } from 'next/navigation';
+
 export default function Home() {
-  return <FullPageSpinner />;
+  const { currentUser, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    
+    if (currentUser) {
+      router.push('/dashboard');
+    } else {
+      router.push('/login');
+    }
+  }, [currentUser, loading, router]);
+
+  return null;
 }
