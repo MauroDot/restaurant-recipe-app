@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function ownsRestaurant(restaurantId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+    }
+
+    // users/{userId} — a user may only read/create/update their own profile doc.
+    match /users/{userId} {
+      allow read, create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // restaurants/{restaurantId} — owner-only access, including the inventory subcollection.
+    match /restaurants/{restaurantId} {
+      allow read, update: if ownsRestaurant(restaurantId);
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow delete: if false;
+
+      match /inventory/{itemId} {
+        allow read, write: if ownsRestaurant(restaurantId);
+      }
+    }
+
+    // recipes/{recipeId} — scoped to the owning restaurant.
+    match /recipes/{recipeId} {
+      allow read, update, delete: if ownsRestaurant(resource.data.restaurantId);
+      allow create: if ownsRestaurant(request.resource.data.restaurantId);
+    }
+
+    // ingredients/{ingredientId} — shared reference data. Any signed-in user can read,
+    // and can write during the one-time client-side bootstrap seed (see
+    // src/data/ingredientSeed.ts). Tighten this to admin-only writes once seeding
+    // moves server-side.
+    match /ingredients/{ingredientId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
