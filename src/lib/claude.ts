@@ -13,7 +13,7 @@ const SYSTEM_PROMPT = `You are a Michelin-trained chef with 20 years of experien
 
 Format as valid JSON array of recipe objects.`;
 
-const MODEL = "claude-3-5-haiku-20241022";
+const MODEL = "claude-opus-4-6";
 
 const RecipeIngredientSchema = z.object({
   itemName: z.string(),
