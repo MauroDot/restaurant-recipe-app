@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { generateRecipesStream } from "@/lib/claude";
 import { GenerateRecipeParamsSchema } from "@/lib/recipeSchema";
-import { verifyIdToken } from "@/lib/firebaseAdmin";
+import { verifyFirebaseIdToken } from "@/lib/verifyIdToken";
 
 // Node.js runtime is the default in Next.js 16 (the 'edge' runtime is
 // deprecated), so no `export const runtime` override is needed here.
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     return unauthorized();
   }
   try {
-    await verifyIdToken(idToken);
+    await verifyFirebaseIdToken(idToken);
   } catch {
     return unauthorized();
   }
