@@ -8,6 +8,29 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid;
       allow read: if request.auth != null
         && resource.data.ownerId == request.auth.uid;
+
+      // Any member of this restaurant (matched via their own users/{uid}
+      // profile, not a client-supplied field) can access its subcollections.
+      function isRestaurantMember() {
+        return request.auth != null
+          && restaurantId ==
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
+      }
+
+      // Live stock — mutable (edit/mark spoiled/delete a record).
+      match /inventory/{inventoryId} {
+        allow read, create, update, delete: if isRestaurantMember();
+      }
+
+      // Purchase history and waste log are append-only audit trails.
+      match /costHistory/{costHistoryId} {
+        allow read, create: if isRestaurantMember();
+        allow update, delete: if false;
+      }
+      match /wasteLog/{wasteId} {
+        allow read, create: if isRestaurantMember();
+        allow update, delete: if false;
+      }
     }
 
     // A user profile doc can only be created and read by the account it belongs to.

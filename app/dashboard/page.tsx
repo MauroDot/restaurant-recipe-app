@@ -8,8 +8,10 @@ import { useAuth } from "@/lib/authContext";
 import { ensureIngredientsSeeded } from "@/lib/seedIngredients";
 import GenerateRecipeForm from "@/components/GenerateRecipeForm";
 import RecipesList from "@/components/RecipesList";
+import InventoryTab from "@/components/InventoryTab";
+import CostAnalysisTab from "@/components/CostAnalysisTab";
 
-type Tab = "generate" | "recipes";
+type Tab = "generate" | "recipes" | "inventory" | "costAnalysis";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -66,6 +68,8 @@ export default function DashboardPage() {
           [
             { key: "generate", label: "Generate Recipe" },
             { key: "recipes", label: "Recipes" },
+            { key: "inventory", label: "Inventory" },
+            { key: "costAnalysis", label: "Cost Analysis" },
           ] as const
         ).map((t) => (
           <button
@@ -83,7 +87,10 @@ export default function DashboardPage() {
       </nav>
 
       <main className="flex-1 px-6 py-8">
-        {tab === "generate" ? <GenerateRecipeForm /> : <RecipesList />}
+        {tab === "generate" && <GenerateRecipeForm />}
+        {tab === "recipes" && <RecipesList />}
+        {tab === "inventory" && <InventoryTab />}
+        {tab === "costAnalysis" && <CostAnalysisTab />}
       </main>
     </div>
   );
