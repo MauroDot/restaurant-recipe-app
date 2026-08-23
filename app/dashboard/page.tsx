@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/authContext";
+import { ensureIngredientsSeeded } from "@/lib/seedIngredients";
+import GenerateRecipeForm from "@/components/GenerateRecipeForm";
+import RecipesList from "@/components/RecipesList";
+
+type Tab = "generate" | "recipes";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading, profile, profileLoading } = useAuth();
+  const [tab, setTab] = useState<Tab>("generate");
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -16,12 +22,24 @@ export default function DashboardPage() {
     }
   }, [loading, currentUser, router]);
 
+  // Warm-start the ingredient catalog seed as soon as we have a signed-in
+  // user. Fire-and-forget: GenerateRecipeForm awaits the same memoized
+  // promise before generating, so a fast submit is still correct even if
+  // this hasn't resolved yet.
+  useEffect(() => {
+    if (currentUser) {
+      ensureIngredientsSeeded().catch((err) => {
+        console.error("Failed to seed ingredients:", err);
+      });
+    }
+  }, [currentUser]);
+
   async function handleLogout() {
     await signOut(auth);
     router.push("/login");
   }
 
-  if (loading || !currentUser) {
+  if (loading || profileLoading || !currentUser || !profile) {
     return (
       <div className="flex flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
         <p className="text-zinc-600 dark:text-zinc-400">Loading…</p>
@@ -42,10 +60,30 @@ export default function DashboardPage() {
           Log out
         </button>
       </header>
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Dashboard coming soon.
-        </p>
+
+      <nav className="flex gap-2 border-b border-black/[.08] bg-white px-6 dark:border-white/[.145] dark:bg-black">
+        {(
+          [
+            { key: "generate", label: "Generate Recipe" },
+            { key: "recipes", label: "Recipes" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? "border-foreground text-black dark:text-zinc-50"
+                : "border-transparent text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="flex-1 px-6 py-8">
+        {tab === "generate" ? <GenerateRecipeForm /> : <RecipesList />}
       </main>
     </div>
   );
