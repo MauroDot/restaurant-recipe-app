@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // functions/ is a separate npm project with its own toolchain (Node
+    // Cloud Functions, firebase-admin) — not part of the Next.js app.
+    "functions/**",
   ]),
 ]);
 

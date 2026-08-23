@@ -57,15 +57,17 @@ export default function InvoicesTab() {
     setError(null);
     setStage({ phase: "saving" });
     try {
-      const storagePath = await uploadInvoiceFile(
-        stage.file,
-        profile.restaurantId,
-        currentUser.uid
-      );
-
+      // Allocate the Firestore doc id client-side (no write yet) so it can
+      // be embedded in the Storage path, then upload before writing the doc.
       const invoiceRef = doc(
         collection(db, "restaurants", profile.restaurantId, "invoices")
       );
+      const storagePath = await uploadInvoiceFile(
+        stage.file,
+        profile.restaurantId,
+        invoiceRef.id
+      );
+
       const invoiceDoc = {
         fileName: stage.file.name,
         storageUrl: storagePath,

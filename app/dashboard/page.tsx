@@ -16,7 +16,8 @@ type Tab = "generate" | "recipes" | "inventory" | "costAnalysis" | "invoices";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { currentUser, loading, profile, profileLoading } = useAuth();
+  const { currentUser, loading, profile, profileLoading, claimsReady } =
+    useAuth();
   const [tab, setTab] = useState<Tab>("generate");
 
   useEffect(() => {
@@ -93,7 +94,14 @@ export default function DashboardPage() {
         {tab === "recipes" && <RecipesList />}
         {tab === "inventory" && <InventoryTab />}
         {tab === "costAnalysis" && <CostAnalysisTab />}
-        {tab === "invoices" && <InvoicesTab />}
+        {tab === "invoices" &&
+          (claimsReady ? (
+            <InvoicesTab />
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Setting up your account…
+            </p>
+          ))}
       </main>
     </div>
   );

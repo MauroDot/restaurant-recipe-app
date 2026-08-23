@@ -13,23 +13,20 @@ function sanitizeFileName(name: string): string {
  * unnecessary exposure. Viewers resolve a fresh URL on demand via
  * getInvoiceViewUrl() instead, which re-checks storage.rules at call time.
  *
- * The path embeds `uploaderUid` as its own segment
- * (restaurants/{restaurantId}/invoices/{uploaderUid}/{file}) so
- * storage.rules can restrict writes to the actual uploader via a plain
- * path-variable comparison. That's a deliberate fallback: Storage Rules'
- * firestore.get()/exists() cross-service calls (which would otherwise
- * verify "is this uid a member of this restaurant" the same way
- * firestore.rules does) don't work in this project — confirmed empirically
- * across several syntax variants, all returning 403 even for a
- * trivially-true check. Reads stay open to any signed-in user as a result;
- * see storage.rules for the full trade-off note.
+ * Path: restaurants/{restaurantId}/invoices/{invoiceId}_{sanitizedFileName}.
+ * `invoiceId` is the Firestore invoice doc's own id (allocated client-side
+ * before this upload — see InvoicesTab.tsx). Now that request.auth.token.
+ * restaurantId is available (a Cloud Function mirrors it from
+ * users/{uid}.restaurantId — see functions/src/index.ts), storage.rules
+ * can check restaurant membership directly, so the uid-segment write-lock
+ * workaround from the previous chunk is no longer needed here.
  */
 export async function uploadInvoiceFile(
   file: File,
   restaurantId: string,
-  uploaderUid: string
+  invoiceId: string
 ): Promise<string> {
-  const path = `restaurants/${restaurantId}/invoices/${uploaderUid}/${Date.now()}_${sanitizeFileName(
+  const path = `restaurants/${restaurantId}/invoices/${invoiceId}_${sanitizeFileName(
     file.name
   )}`;
   await uploadBytes(ref(storage, path), file, { contentType: file.type });
