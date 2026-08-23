@@ -44,13 +44,17 @@ export default function RecipesList() {
             name: data.name,
             description: data.description,
             servings: data.servings,
-            instructions: data.instructions ?? [],
+            instructions: Array.isArray(data.instructions)
+            ? data.instructions
+            : typeof data.instructions === "string"
+            ? data.instructions.split("\n").filter(Boolean)
+            : [],
             ingredients: data.ingredients ?? [],
             cuisine: data.cuisine,
             dishType: data.dishType,
             style: data.style,
             totalCost: data.totalCost,
-            menuPrices: data.menuPrices,
+            menuPrices: data.menuPrices ?? { price28: 0, price32: 0, price35: 0 },
             createdAt: data.createdAt ?? null,
           };
         });
