@@ -9,10 +9,14 @@ export const RecipeIngredientSchema = z.object({
   unit: z.string(),
 });
 
+// Deliberately no `servings` here — servings is a fixed input the caller
+// dictates (see GenerateRecipeParamsSchema below), not something the model
+// is free to choose. Letting it choose independently of the cost target
+// was exactly the chunk 6.1 bug: two uncoupled guesses (a "cost-ish" recipe
+// size and an unrelated serving count) landing at an uncorrelated total.
 export const RecipeSchema = z.object({
   name: z.string(),
   description: z.string(),
-  servings: z.number().int().positive(),
   instructions: z.array(z.string()).min(1),
   ingredients: z.array(RecipeIngredientSchema).min(1),
 });
@@ -75,7 +79,11 @@ export const GenerateRecipeParamsSchema = z.object({
   cuisine: z.enum(CUISINE_VALUES),
   dishType: z.enum(DISH_TYPE_VALUES),
   style: z.enum(STYLE_VALUES),
+  /** Target food cost PER PORTION, in dollars — see src/lib/pricing.ts. */
   targetCost: z.number().positive(),
+  /** Fixed portion count the recipe must be designed for — an input to the
+   *  cost constraint, not something the model chooses (chunk 6.1). */
+  servings: z.number().int().positive().max(100),
   availableIngredients: z
     .array(z.object({ name: z.string(), unit: z.string() }))
     .min(1),

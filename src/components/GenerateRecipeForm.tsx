@@ -37,6 +37,10 @@ type RecipeWithCost = {
   recipe: GeneratedRecipe;
   breakdown: RecipeCostBreakdown;
   menuPrices: MenuPrices;
+  /** Portion count this recipe was generated for — captured at generation
+   *  time, not read live from the form, so a later edit to the Servings
+   *  field can't silently mismatch already-computed costs (chunk 6.1). */
+  servings: number;
 };
 
 export default function GenerateRecipeForm() {
@@ -48,6 +52,7 @@ export default function GenerateRecipeForm() {
   );
   const [style, setStyle] = useState<Style>(STYLE_OPTIONS[0].value);
   const [targetCost, setTargetCost] = useState("6.00");
+  const [servings, setServings] = useState("4");
 
   const [generating, setGenerating] = useState(false);
   const [progressChars, setProgressChars] = useState(0);
@@ -113,6 +118,7 @@ export default function GenerateRecipeForm() {
           dishType,
           style,
           targetCost: Number(targetCost),
+          servings: Number(servings),
           availableIngredients: ingredients.map((i) => ({
             name: i.name,
             unit: i.unit,
@@ -173,12 +179,18 @@ export default function GenerateRecipeForm() {
       const parsedJson = JSON.parse(jsonBuffer);
       const validated = RecipesResponseSchema.parse(parsedJson);
 
+      const requestedServings = Number(servings);
       const withCost: RecipeWithCost[] = validated.recipes.map((recipe) => {
-        const breakdown = calculateRecipeCost(recipe.ingredients, ingredientMap);
+        const breakdown = calculateRecipeCost(
+          recipe.ingredients,
+          ingredientMap,
+          requestedServings
+        );
         return {
           recipe,
           breakdown,
-          menuPrices: recommendMenuPrice(breakdown.totalCost),
+          servings: requestedServings,
+          menuPrices: recommendMenuPrice(breakdown.costPerPortion),
         };
       });
 
@@ -193,7 +205,8 @@ export default function GenerateRecipeForm() {
 
   async function handleSave(index: number) {
     if (!currentUser || !profile || !results) return;
-    const { recipe, breakdown, menuPrices } = results[index];
+    const { recipe, breakdown, menuPrices, servings: recipeServings } =
+      results[index];
 
     setSaveStates((s) => ({ ...s, [index]: "saving" }));
     setSaveErrors((s) => ({ ...s, [index]: "" }));
@@ -203,7 +216,7 @@ export default function GenerateRecipeForm() {
       await setDoc(recipeRef, {
         name: recipe.name,
         description: recipe.description,
-        servings: recipe.servings,
+        servings: recipeServings,
         instructions: recipe.instructions,
         ingredients: recipe.ingredients,
         cuisine,
@@ -213,6 +226,7 @@ export default function GenerateRecipeForm() {
         createdBy: currentUser.uid,
         createdAt: serverTimestamp(),
         totalCost: breakdown.totalCost,
+        costPerPortion: breakdown.costPerPortion,
         menuPrices,
       });
       setSaveStates((s) => ({ ...s, [index]: "saved" }));
@@ -285,7 +299,7 @@ export default function GenerateRecipeForm() {
 
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Target food cost ($/dish)
+            Target food cost ($/portion)
           </label>
           <input
             type="number"
@@ -295,6 +309,22 @@ export default function GenerateRecipeForm() {
             value={targetCost}
             onChange={(e) => setTargetCost(e.target.value)}
             className="w-32 rounded border border-black/[.08] bg-transparent px-3 py-2 text-black dark:border-white/[.145] dark:text-zinc-50"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Servings
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="100"
+            step="1"
+            required
+            value={servings}
+            onChange={(e) => setServings(e.target.value)}
+            className="w-24 rounded border border-black/[.08] bg-transparent px-3 py-2 text-black dark:border-white/[.145] dark:text-zinc-50"
           />
         </div>
 
@@ -319,7 +349,7 @@ export default function GenerateRecipeForm() {
 
       {results && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {results.map(({ recipe, breakdown, menuPrices }, index) => {
+          {results.map(({ recipe, breakdown, menuPrices, servings: recipeServings }, index) => {
             const saveState = saveStates[index] ?? "idle";
             const hasMissing = breakdown.missingIngredients.length > 0;
             return (
@@ -334,7 +364,7 @@ export default function GenerateRecipeForm() {
                   {recipe.description}
                 </p>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Serves {recipe.servings}
+                  Serves {recipeServings}
                 </p>
 
                 <div>
@@ -372,7 +402,9 @@ export default function GenerateRecipeForm() {
 
                 <div className="border-t border-black/[.08] pt-3 text-sm dark:border-white/[.145]">
                   <p className="font-medium text-black dark:text-zinc-50">
-                    Total cost: ${breakdown.totalCost.toFixed(2)}
+                    Cost per portion: ${breakdown.costPerPortion.toFixed(2)} ·
+                    Total (serves {recipeServings}): $
+                    {breakdown.totalCost.toFixed(2)}
                   </p>
                   <p className="text-zinc-600 dark:text-zinc-400">
                     Menu price @ 28%: ${menuPrices.price28.toFixed(2)}

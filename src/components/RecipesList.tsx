@@ -17,6 +17,7 @@ type SavedRecipe = {
   dishType: string;
   style: string;
   totalCost: number;
+  costPerPortion: number;
   menuPrices: MenuPrices;
   createdAt: { seconds: number } | null;
 };
@@ -54,6 +55,10 @@ export default function RecipesList() {
             dishType: data.dishType,
             style: data.style,
             totalCost: data.totalCost,
+            // Fall back to deriving it if an older doc predates this field
+            // (shouldn't happen — the recipes collection was wiped when
+            // costPerPortion was introduced — but cheap insurance).
+            costPerPortion: data.costPerPortion ?? data.totalCost / data.servings,
             menuPrices: data.menuPrices ?? { price28: 0, price32: 0, price35: 0 },
             createdAt: data.createdAt ?? null,
           };
@@ -144,7 +149,8 @@ export default function RecipesList() {
 
           <div className="border-t border-black/[.08] pt-3 text-sm dark:border-white/[.145]">
             <p className="font-medium text-black dark:text-zinc-50">
-              Total cost: ${recipe.totalCost.toFixed(2)}
+              Cost per portion: ${recipe.costPerPortion.toFixed(2)} · Total
+              (serves {recipe.servings}): ${recipe.totalCost.toFixed(2)}
             </p>
             <p className="text-zinc-600 dark:text-zinc-400">
               Menu price @ 28%: ${recipe.menuPrices.price28.toFixed(2)}

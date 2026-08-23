@@ -32,7 +32,14 @@ export type RecipeCostLineItem = {
 };
 
 export type RecipeCostBreakdown = {
+  /** Sum of every ingredient line's cost — the whole recipe, all portions. */
   totalCost: number;
+  /** totalCost / servings. This is the number "target food cost per dish"
+   *  and menu pricing are actually about — naming it separately from
+   *  totalCost is deliberate: conflating the two (or leaving it implicit
+   *  which one a bare "cost" means) is exactly the bug this field exists
+   *  to prevent. See chunk 6.1. */
+  costPerPortion: number;
   lineItems: RecipeCostLineItem[];
   /** Ingredient names the recipe referenced that weren't found in the catalog map. */
   missingIngredients: string[];
@@ -42,10 +49,14 @@ export type RecipeCostBreakdown = {
  * Sums the cost of every ingredient line in a recipe, looking each one up in
  * `ingredientMap` by normalized (trimmed, lowercased) name. Never trusts a
  * cost supplied by the recipe itself — only the catalog's `currentCost`.
+ * `servings` must be the actual portion count this recipe was designed for
+ * (a fixed input the caller controls, not something inferred here) so that
+ * totalCost === costPerPortion * servings holds exactly.
  */
 export function calculateRecipeCost(
   recipeIngredients: RecipeIngredientInput[],
-  ingredientMap: Map<string, Ingredient>
+  ingredientMap: Map<string, Ingredient>,
+  servings: number
 ): RecipeCostBreakdown {
   const lineItems: RecipeCostLineItem[] = [];
   const missingIngredients: string[] = [];
@@ -68,7 +79,7 @@ export function calculateRecipeCost(
     });
   }
 
-  return { totalCost, lineItems, missingIngredients };
+  return { totalCost, costPerPortion: totalCost / servings, lineItems, missingIngredients };
 }
 
 export type MenuPrices = {
@@ -78,14 +89,16 @@ export type MenuPrices = {
 };
 
 /**
- * Recommended menu prices at 28%, 32%, and 35% food cost:
- * price = totalIngredientCost / foodCostPercent
+ * Recommended menu prices at 28%, 32%, and 35% food cost. Takes
+ * costPerPortion, NOT totalCost — a menu price is what one plated portion
+ * sells for, so pricing it off the whole recipe's total cost overstates it
+ * by a factor of `servings`. price = costPerPortion / foodCostPercent.
  */
-export function recommendMenuPrice(totalCost: number): MenuPrices {
+export function recommendMenuPrice(costPerPortion: number): MenuPrices {
   return {
-    price28: totalCost / 0.28,
-    price32: totalCost / 0.32,
-    price35: totalCost / 0.35,
+    price28: costPerPortion / 0.28,
+    price32: costPerPortion / 0.32,
+    price35: costPerPortion / 0.35,
   };
 }
 
