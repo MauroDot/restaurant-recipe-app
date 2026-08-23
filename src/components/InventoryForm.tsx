@@ -1,15 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  Timestamp,
-  collection,
-  doc,
-  serverTimestamp,
-  writeBatch,
-} from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
-import { db } from "@/lib/firebase";
+import { addInventoryPurchase } from "@/lib/inventoryActions";
 import type { Ingredient } from "@/lib/types";
 
 function todayInputValue(): string {
@@ -56,42 +50,22 @@ export default function InventoryForm({
 
     setSubmitting(true);
     try {
-      const inventoryRef = doc(
-        collection(db, "restaurants", restaurantId, "inventory")
-      );
-      const costHistoryRef = doc(
-        collection(db, "restaurants", restaurantId, "costHistory")
-      );
-
       const receivedTimestamp = Timestamp.fromDate(new Date(dateReceived));
       const expiryTimestamp = expiryDate
         ? Timestamp.fromDate(new Date(expiryDate))
         : null;
-      const parsedQuantity = Number(quantity);
-      const parsedCost = Number(costPerUnit);
 
-      const batch = writeBatch(db);
-      batch.set(inventoryRef, {
+      await addInventoryPurchase({
+        restaurantId,
         ingredientId,
         itemName: ingredient.name,
-        quantity: parsedQuantity,
+        quantity: Number(quantity),
         unit,
-        costPerUnit: parsedCost,
+        costPerUnit: Number(costPerUnit),
         supplier,
         dateReceived: receivedTimestamp,
         expiryDate: expiryTimestamp,
-        status: "active",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
-      batch.set(costHistoryRef, {
-        ingredientId,
-        date: receivedTimestamp,
-        costPerUnit: parsedCost,
-        supplier,
-        quantity: parsedQuantity,
-      });
-      await batch.commit();
 
       setIngredientId("");
       setQuantity("1");

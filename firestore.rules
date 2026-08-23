@@ -31,6 +31,14 @@ service cloud.firestore {
         allow read, create: if isRestaurantMember();
         allow update, delete: if false;
       }
+
+      // Invoices are only ever written as a single "Confirm & Save" from
+      // client state that was never persisted before that point (review and
+      // editing happen locally) — update is still allowed so a chef can fix
+      // a saved invoice later, and delete for removing a bad upload.
+      match /invoices/{invoiceId} {
+        allow read, write: if isRestaurantMember();
+      }
     }
 
     // A user profile doc can only be created and read by the account it belongs to.

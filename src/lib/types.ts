@@ -53,3 +53,38 @@ export type WasteLogEntry = {
   costImpact: number;
   notes?: string;
 };
+
+export type InvoiceStatus = "pending_review" | "confirmed" | "rejected";
+
+export type InvoiceLineItem = {
+  itemName: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineCost: number;
+  notes?: string;
+};
+
+export type Invoice = {
+  id?: string;
+  /** Original uploaded filename, for display. */
+  fileName: string;
+  /**
+   * Cloud Storage OBJECT PATH (e.g. "restaurants/{id}/invoices/169..._sysco.pdf"),
+   * NOT a public download URL. A getDownloadURL() token is a standing bearer
+   * credential independent of security rules — resolve a fresh viewing URL
+   * on demand via getInvoiceViewUrl() in src/lib/storage.ts instead.
+   */
+  storageUrl: string;
+  supplier: string;
+  invoiceDate?: Timestamp | null;
+  total?: number | null;
+  /** Verbatim transcription from Claude Vision, kept for audit/debugging. */
+  rawOcrText: string;
+  status: InvoiceStatus;
+  lineItems: InvoiceLineItem[];
+  parsedErrors?: string[];
+  createdAt?: Timestamp;
+  reviewedAt?: Timestamp | null;
+  reviewedBy?: string | null;
+};

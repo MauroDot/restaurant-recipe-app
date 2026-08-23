@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // NOTE: this was originally designed to verify "is this uid a member
+    // of restaurant {restaurantId}" via a firestore.get()/exists()
+    // cross-service call, mirroring firestore.rules' isRestaurantMember().
+    // That call does not work in this project — confirmed empirically
+    // across several syntax variants (request.auth.uid vs .id, with and
+    // without a /projects/{id} prefix, get() vs exists()), all returning
+    // 403 even for a check that should trivially evaluate true. Fallback:
+    // the uploader's uid is embedded as its own path segment so writes can
+    // still be locked to the actual uploader via a plain path-variable
+    // comparison (no cross-service call needed). Reads are open to any
+    // signed-in user as a result — mitigated by paths being effectively
+    // unguessable (a random Firestore-generated restaurantId plus a
+    // timestamp), but this is a real, known gap versus proper per-restaurant
+    // isolation. Firestore's own `invoices` collection rules (firestore.rules)
+    // are unaffected and still properly restaurant-scoped.
+    match /restaurants/{restaurantId}/invoices/{uploaderUid}/{fileName} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.uid == uploaderUid
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'application/pdf'];
+
+      // Object paths are always fresh (timestamp-prefixed) — there is no
+      // legitimate in-place replace flow.
+      allow update: if false;
+
+      allow delete: if request.auth != null && request.auth.uid == uploaderUid;
+    }
+
+    // Deny everything else by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

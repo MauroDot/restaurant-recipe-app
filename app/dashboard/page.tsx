@@ -10,8 +10,9 @@ import GenerateRecipeForm from "@/components/GenerateRecipeForm";
 import RecipesList from "@/components/RecipesList";
 import InventoryTab from "@/components/InventoryTab";
 import CostAnalysisTab from "@/components/CostAnalysisTab";
+import InvoicesTab from "@/components/InvoicesTab";
 
-type Tab = "generate" | "recipes" | "inventory" | "costAnalysis";
+type Tab = "generate" | "recipes" | "inventory" | "costAnalysis" | "invoices";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -70,6 +71,7 @@ export default function DashboardPage() {
             { key: "recipes", label: "Recipes" },
             { key: "inventory", label: "Inventory" },
             { key: "costAnalysis", label: "Cost Analysis" },
+            { key: "invoices", label: "Invoices" },
           ] as const
         ).map((t) => (
           <button
@@ -91,6 +93,7 @@ export default function DashboardPage() {
         {tab === "recipes" && <RecipesList />}
         {tab === "inventory" && <InventoryTab />}
         {tab === "costAnalysis" && <CostAnalysisTab />}
+        {tab === "invoices" && <InvoicesTab />}
       </main>
     </div>
   );
