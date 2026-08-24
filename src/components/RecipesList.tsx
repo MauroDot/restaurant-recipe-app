@@ -4,28 +4,38 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/authContext";
-import type { MenuPrices } from "@/lib/pricing";
+import RecipeVersions, { type RecipeLineage, type SavedRecipe } from "@/components/RecipeVersions";
 
-type SavedRecipe = {
-  id: string;
-  name: string;
-  description: string;
-  servings: number;
-  instructions: string[];
-  ingredients: { ingredientName: string; quantity: number; unit: string }[];
-  cuisine: string;
-  dishType: string;
-  style: string;
-  totalCost: number;
-  costPerPortion: number;
-  menuPrices: MenuPrices;
-  createdAt: { seconds: number } | null;
-};
+/** Groups a flat recipe list into version lineages, keyed by baseRecipeId ??
+ *  id (chunk 7 — recipes stay a flat collection; v1/v2/... link via
+ *  baseRecipeId rather than nesting). Each lineage surfaces whichever
+ *  version is status:"active" as primary; the rest are "superseded",
+ *  newest first. */
+function groupIntoLineages(recipes: SavedRecipe[]): RecipeLineage[] {
+  const byRoot = new Map<string, SavedRecipe[]>();
+  for (const r of recipes) {
+    const root = r.baseRecipeId ?? r.id;
+    const group = byRoot.get(root) ?? [];
+    group.push(r);
+    byRoot.set(root, group);
+  }
+
+  const lineages: RecipeLineage[] = [];
+  for (const group of byRoot.values()) {
+    const active = group.find((r) => r.status === "active") ?? group[0];
+    const superseded = group
+      .filter((r) => r.id !== active.id)
+      .sort((a, b) => b.version - a.version);
+    lineages.push({ active, superseded });
+  }
+  return lineages;
+}
 
 export default function RecipesList() {
   const { profile } = useAuth();
   const [recipes, setRecipes] = useState<SavedRecipe[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!profile) return;
@@ -61,6 +71,12 @@ export default function RecipesList() {
             costPerPortion: data.costPerPortion ?? data.totalCost / data.servings,
             menuPrices: data.menuPrices ?? { price28: 0, price32: 0, price35: 0 },
             createdAt: data.createdAt ?? null,
+            version: data.version ?? 1,
+            baseRecipeId: data.baseRecipeId ?? null,
+            status: data.status ?? "active",
+            aggregateRating: data.aggregateRating ?? 0,
+            ratingCount: data.ratingCount ?? 0,
+            changesSummary: data.changesSummary,
           };
         });
         // No `orderBy` in the query (would need a composite index alongside
@@ -75,7 +91,7 @@ export default function RecipesList() {
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [profile, reloadKey]);
 
   if (error) {
     return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
@@ -95,74 +111,13 @@ export default function RecipesList() {
     );
   }
 
+  const lineages = groupIntoLineages(recipes);
+  const refresh = () => setReloadKey((k) => k + 1);
+
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {recipes.map((recipe) => (
-        <div
-          key={recipe.id}
-          className="flex flex-col gap-3 rounded border border-black/[.08] bg-white p-5 dark:border-white/[.145] dark:bg-black"
-        >
-          <h3 className="text-lg font-semibold text-black dark:text-zinc-50">
-            {recipe.name}
-          </h3>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {recipe.description}
-          </p>
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            <span className="rounded-full border border-black/[.08] px-2 py-0.5 text-zinc-600 dark:border-white/[.145] dark:text-zinc-400">
-              {recipe.cuisine}
-            </span>
-            <span className="rounded-full border border-black/[.08] px-2 py-0.5 text-zinc-600 dark:border-white/[.145] dark:text-zinc-400">
-              {recipe.dishType}
-            </span>
-            <span className="rounded-full border border-black/[.08] px-2 py-0.5 text-zinc-600 dark:border-white/[.145] dark:text-zinc-400">
-              {recipe.style}
-            </span>
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Serves {recipe.servings}
-          </p>
-
-          <div>
-            <h4 className="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Ingredients
-            </h4>
-            <ul className="text-sm text-zinc-600 dark:text-zinc-400">
-              {recipe.ingredients.map((ri, i) => (
-                <li key={i}>
-                  {ri.quantity} {ri.unit} {ri.ingredientName}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Instructions
-            </h4>
-            <ol className="list-decimal space-y-1 pl-4 text-sm text-zinc-600 dark:text-zinc-400">
-              {recipe.instructions.map((step, i) => (
-                <li key={i}>{step}</li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="border-t border-black/[.08] pt-3 text-sm dark:border-white/[.145]">
-            <p className="font-medium text-black dark:text-zinc-50">
-              Cost per portion: ${recipe.costPerPortion.toFixed(2)} · Total
-              (serves {recipe.servings}): ${recipe.totalCost.toFixed(2)}
-            </p>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Menu price @ 28%: ${recipe.menuPrices.price28.toFixed(2)}
-            </p>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Menu price @ 32%: ${recipe.menuPrices.price32.toFixed(2)}
-            </p>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Menu price @ 35%: ${recipe.menuPrices.price35.toFixed(2)}
-            </p>
-          </div>
-        </div>
+      {lineages.map((lineage) => (
+        <RecipeVersions key={lineage.active.id} lineage={lineage} onRefresh={refresh} />
       ))}
     </div>
   );

@@ -20,6 +20,48 @@ export function detectTrend(
   return "stable";
 }
 
+export type PriceTrend = {
+  avg30d: number;
+  avg90d: number;
+  /** Percent change of avg30d relative to avg90d. */
+  change: number;
+  direction: "up" | "down" | "stable";
+};
+
+/**
+ * Average cost/unit over the last 30 and 90 days from a set of cost-history
+ * entries (assumed already filtered to one ingredient, one restaurant).
+ * `now` is a parameter (not read internally) to keep this pure — an impure
+ * Date.now() call would be a render-body purity violation if this were ever
+ * called from a component; API routes calling it aren't render bodies, but
+ * matching the project's established convention here regardless.
+ */
+export function computePriceTrend(
+  entries: { costPerUnit: number; date: Date }[],
+  now: Date
+): PriceTrend {
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+  const within30 = entries.filter((e) => e.date >= thirtyDaysAgo);
+  const within90 = entries.filter((e) => e.date >= ninetyDaysAgo);
+
+  const avg = (list: { costPerUnit: number }[]) =>
+    list.length > 0
+      ? list.reduce((sum, e) => sum + e.costPerUnit, 0) / list.length
+      : 0;
+
+  const avg30d = avg(within30);
+  const avg90d = avg(within90);
+  const change = avg90d > 0 ? ((avg30d - avg90d) / avg90d) * 100 : 0;
+
+  let direction: PriceTrend["direction"] = "stable";
+  if (change > 2) direction = "up";
+  else if (change < -2) direction = "down";
+
+  return { avg30d, avg90d, change, direction };
+}
+
 /** Active inventory items expiring within `days` (and not already past). */
 export function expiringItems(
   inventory: InventoryItem[],

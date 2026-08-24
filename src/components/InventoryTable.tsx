@@ -13,6 +13,8 @@ import {
 import { db } from "@/lib/firebase";
 import type { InventoryItem } from "@/lib/types";
 import { daysUntilExpiry } from "@/lib/costAnalysis";
+import Modal from "@/components/Modal";
+import IngredientRatingForm from "@/components/IngredientRatingForm";
 
 export default function InventoryTable({
   restaurantId,
@@ -27,6 +29,7 @@ export default function InventoryTable({
   const [editQuantity, setEditQuantity] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ratingItem, setRatingItem] = useState<InventoryItem | null>(null);
 
   const totalCost = items.reduce(
     (sum, item) => sum + item.quantity * item.costPerUnit,
@@ -213,6 +216,13 @@ export default function InventoryTable({
                         >
                           Delete
                         </button>
+                        <button
+                          onClick={() => setRatingItem(item)}
+                          disabled={isBusy}
+                          className="rounded-full border border-black/[.08] px-3 py-1 text-xs font-medium hover:bg-black/[.04] disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                        >
+                          Rate
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -221,6 +231,18 @@ export default function InventoryTable({
             </tbody>
           </table>
         </div>
+      )}
+
+      {ratingItem && (
+        <Modal title={`Rate: ${ratingItem.itemName}`} onClose={() => setRatingItem(null)}>
+          <IngredientRatingForm
+            ingredientId={ratingItem.ingredientId}
+            ingredientName={ratingItem.itemName}
+            defaultSupplier={ratingItem.supplier}
+            onSaved={() => setRatingItem(null)}
+            onCancel={() => setRatingItem(null)}
+          />
+        </Modal>
       )}
     </div>
   );

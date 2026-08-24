@@ -11,8 +11,15 @@ import RecipesList from "@/components/RecipesList";
 import InventoryTab from "@/components/InventoryTab";
 import CostAnalysisTab from "@/components/CostAnalysisTab";
 import InvoicesTab from "@/components/InvoicesTab";
+import IngredientIntelligence from "@/components/IngredientIntelligence";
 
-type Tab = "generate" | "recipes" | "inventory" | "costAnalysis" | "invoices";
+type Tab =
+  | "generate"
+  | "recipes"
+  | "inventory"
+  | "costAnalysis"
+  | "invoices"
+  | "ingredientIntelligence";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -73,6 +80,7 @@ export default function DashboardPage() {
             { key: "inventory", label: "Inventory" },
             { key: "costAnalysis", label: "Cost Analysis" },
             { key: "invoices", label: "Invoices" },
+            { key: "ingredientIntelligence", label: "Ingredient Intelligence" },
           ] as const
         ).map((t) => (
           <button
@@ -102,6 +110,7 @@ export default function DashboardPage() {
               Setting up your account…
             </p>
           ))}
+        {tab === "ingredientIntelligence" && <IngredientIntelligence />}
       </main>
     </div>
   );

@@ -228,6 +228,15 @@ export default function GenerateRecipeForm() {
         totalCost: breakdown.totalCost,
         costPerPortion: breakdown.costPerPortion,
         menuPrices,
+        // Chunk 7 versioning/rating fields — every freshly generated recipe
+        // starts as v1, active, unrated. v2+ only ever comes from the
+        // improveRecipe Cloud Function, never from this form.
+        version: 1,
+        baseRecipeId: null,
+        status: "active",
+        aggregateRating: 0,
+        ratingCount: 0,
+        lastRatedAt: null,
       });
       setSaveStates((s) => ({ ...s, [index]: "saved" }));
     } catch (err) {

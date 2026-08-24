@@ -39,6 +39,23 @@ service cloud.firestore {
       match /invoices/{invoiceId} {
         allow read, write: if isRestaurantMember();
       }
+
+      // Ratings against the shared `ingredients` catalog, but siloed per
+      // restaurant (chunk 7: "crowdsourced" means many chefs at one
+      // restaurant, not across restaurants). Append-only, like costHistory/
+      // wasteLog — a rating shouldn't be editable after the fact.
+      match /ingredientRatings/{ratingId} {
+        allow read, create: if isRestaurantMember();
+        allow update, delete: if false;
+      }
+
+      // Written only by aggregateIngredientIntelligence (Cloud Function,
+      // Admin SDK — bypasses rules entirely, so this doesn't need a write
+      // clause for it). Explicitly false here so no client can forge one.
+      match /ingredientIntelligenceCache/{ingredientId} {
+        allow read: if isRestaurantMember();
+        allow write: if false;
+      }
     }
 
     // A user profile doc can only be created and read by the account it belongs to.
@@ -81,7 +98,21 @@ service cloud.firestore {
       allow read: if request.auth != null
         && resource.data.restaurantId ==
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
+      // Still immutable for clients — aggregateRating/ratingCount/lastRatedAt/
+      // status are only ever written by Cloud Functions (Admin SDK, bypasses
+      // rules entirely), never by a chef directly. If a client could update
+      // its own recipe doc, it could fake its own rating.
       allow update, delete: if false;
+
+      // Append-only, like costHistory/wasteLog — feedback isn't editable
+      // after submission. Membership is derived from the PARENT recipe's
+      // restaurantId (one extra get()), not a client-supplied field.
+      match /feedback/{feedbackId} {
+        allow read, create: if request.auth != null
+          && get(/databases/$(database)/documents/recipes/$(recipeId)).data.restaurantId ==
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
+        allow update, delete: if false;
+      }
     }
 
     // Deny everything else by default.

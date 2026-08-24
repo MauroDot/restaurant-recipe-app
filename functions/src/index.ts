@@ -41,3 +41,7 @@ export const syncRestaurantClaim = onDocumentWritten(
       .update({ claimsSyncedAt: FieldValue.serverTimestamp() });
   }
 );
+
+export { improveRecipe } from "./improveRecipe";
+export { aggregateIngredientIntelligence } from "./aggregateIngredientIntelligence";
+export { aggregateRecipeRating } from "./aggregateRecipeRating";
