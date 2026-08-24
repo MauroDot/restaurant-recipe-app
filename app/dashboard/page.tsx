@@ -12,6 +12,7 @@ import InventoryTab from "@/components/InventoryTab";
 import CostAnalysisTab from "@/components/CostAnalysisTab";
 import InvoicesTab from "@/components/InvoicesTab";
 import IngredientIntelligence from "@/components/IngredientIntelligence";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Tab =
   | "generate"
@@ -64,12 +65,15 @@ export default function DashboardPage() {
         <span className="text-sm text-zinc-600 dark:text-zinc-400">
           {currentUser.email}
         </span>
-        <button
-          onClick={handleLogout}
-          className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-        >
-          Log out
-        </button>
+        <div className="flex gap-2">
+          <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            Log out
+          </button>
+        </div>
       </header>
 
       <nav className="flex gap-2 border-b border-black/[.08] bg-white px-6 dark:border-white/[.145] dark:bg-black">

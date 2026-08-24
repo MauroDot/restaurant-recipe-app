@@ -1,7 +1,28 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { AuthProvider } from "@/lib/authContext";
+import { ThemeProvider } from "@/lib/themeContext";
 import "./globals.css";
+
+// Runs before hydration (strategy="beforeInteractive") so the "dark" class
+// lands on <html> before the first paint — no flash of the wrong theme.
+// ThemeProvider's own React state (src/lib/themeContext.tsx) starts at a
+// fixed "dark" default specifically so it never needs to fight this script:
+// it corrects its OWN state from localStorage in an effect after mount,
+// which only affects the toggle button's label, not the page's colors.
+const THEME_INIT_SCRIPT = `
+(function () {
+  try {
+    var stored = localStorage.getItem("theme");
+    if (stored === "light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+    }
+  } catch (e) {}
+})();
+`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,10 +43,23 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      // The beforeInteractive script below mutates this element's class
+      // list before React hydrates — React never rendered that class
+      // itself, so there's nothing to reconcile, but suppress the warning
+      // defensively since this is exactly the kind of DOM mutation React
+      // can't know about ahead of time.
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
+        <ThemeProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

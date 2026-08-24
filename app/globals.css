@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/*
+ * chunk 11: switches `dark:` from Tailwind v4's default media-query
+ * strategy (@media (prefers-color-scheme: dark), which every `dark:`
+ * utility across this codebase was implicitly using) to class-based —
+ * ThemeToggle's classList.toggle("dark") on <html> would otherwise have
+ * no visible effect at all, since nothing in the CSS responded to the
+ * class before this. See src/lib/themeContext.tsx / app/layout.tsx's
+ * beforeInteractive script.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +23,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {
