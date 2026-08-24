@@ -53,6 +53,7 @@ export default function GenerateRecipeForm() {
   const [style, setStyle] = useState<Style>(STYLE_OPTIONS[0].value);
   const [targetCost, setTargetCost] = useState("6.00");
   const [servings, setServings] = useState("4");
+  const [customIngredients, setCustomIngredients] = useState("");
 
   const [generating, setGenerating] = useState(false);
   const [progressChars, setProgressChars] = useState(0);
@@ -100,6 +101,16 @@ export default function GenerateRecipeForm() {
         );
       const ingredientMap = buildIngredientMap(ingredients);
 
+      // Parsed but deliberately NOT added to ingredientMap/ingredients above
+      // — these have no catalog cost data, so a recipe that uses one will
+      // correctly show up in breakdown.missingIngredients (existing
+      // chunk-2 behavior, not new logic) rather than being silently costed
+      // as $0 or blocking generation.
+      const customIngredientNames = customIngredients
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       if (!currentUser) {
         setError("You must be signed in to generate recipes.");
         setGenerating(false);
@@ -119,10 +130,14 @@ export default function GenerateRecipeForm() {
           style,
           targetCost: Number(targetCost),
           servings: Number(servings),
-          availableIngredients: ingredients.map((i) => ({
-            name: i.name,
-            unit: i.unit,
-          })),
+          availableIngredients: [
+            ...ingredients.map((i) => ({ name: i.name, unit: i.unit })),
+            ...customIngredientNames.map((name) => ({
+              name,
+              unit: "as-needed",
+            })),
+          ],
+          customIngredientNames,
         }),
       });
 
@@ -335,6 +350,24 @@ export default function GenerateRecipeForm() {
             onChange={(e) => setServings(e.target.value)}
             className="w-24 rounded border border-black/[.08] bg-transparent px-3 py-2 text-black dark:border-white/[.145] dark:text-zinc-50"
           />
+        </div>
+
+        <div className="flex w-full flex-col gap-1">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Or specify custom ingredients (comma-separated, optional)
+          </label>
+          <input
+            type="text"
+            placeholder='e.g. "Wagyu beef, Truffle oil, Saffron"'
+            value={customIngredients}
+            onChange={(e) => setCustomIngredients(e.target.value)}
+            className="w-full rounded border border-black/[.08] bg-transparent px-3 py-2 text-black dark:border-white/[.145] dark:text-zinc-50"
+          />
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+            Not in the catalog — Claude can still use them, but their cost
+            won&apos;t be calculated (shown as &quot;not found in
+            catalog&quot;) until they&apos;re added to inventory.
+          </p>
         </div>
 
         <button

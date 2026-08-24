@@ -15,6 +15,14 @@ export type GenerateRecipesInput = {
   cuisine: string;
   dishType: string;
   style: string;
+  /**
+   * Subset of availableIngredients the chef specifically typed in (chunk
+   * 10's "custom ingredients" field), called out separately in the prompt
+   * below — buried as one name among hundreds with no distinguishing
+   * signal, the model reliably ignored it in testing even when it plainly
+   * fit the dish (high budget, fine dining).
+   */
+  customIngredientNames?: string[];
 };
 
 /**
@@ -33,9 +41,14 @@ export function generateRecipesStream(input: GenerateRecipesInput) {
     "You design dishes strictly from a provided ingredient catalog and never invent ingredients.";
 
   const totalTarget = input.targetCost * input.servings;
+  const customIngredientsNote =
+    input.customIngredientNames && input.customIngredientNames.length > 0
+      ? `\nThe chef has specifically requested these ingredient(s), in addition to the catalog below: ${input.customIngredientNames.join(", ")}. At least one of the 3 recipes should genuinely incorporate at least one of them, as long as it fits the dish concept, cuisine, and budget — don't force an awkward fit, but make a real attempt rather than defaulting to catalog-only ingredients.\n`
+      : "";
   const userPrompt = `Generate exactly 3 distinct ${input.dishType} recipes.
 Cuisine: ${input.cuisine}
 Style: ${input.style}
+${customIngredientsNote}
 
 Each recipe must yield EXACTLY ${input.servings} portions. Target ingredient
 cost is $${input.targetCost.toFixed(2)} per portion — since this recipe yields

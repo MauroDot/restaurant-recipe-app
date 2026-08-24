@@ -87,5 +87,15 @@ export const GenerateRecipeParamsSchema = z.object({
   availableIngredients: z
     .array(z.object({ name: z.string(), unit: z.string() }))
     .min(1),
+  /**
+   * Names the chef specifically typed into the "custom ingredients" field
+   * (chunk 10) — a SUBSET of availableIngredients, not a separate pool.
+   * Kept separate so the prompt can call these out by name: buried as one
+   * name among ~600 catalog entries with no distinguishing signal, testing
+   * showed the model reliably ignores a chef-requested ingredient even in
+   * a context (high budget, fine dining) where it plainly fits — see
+   * src/lib/claude.ts's prompt for how this list is used.
+   */
+  customIngredientNames: z.array(z.string()).optional(),
 });
 export type GenerateRecipeParams = z.infer<typeof GenerateRecipeParamsSchema>;
