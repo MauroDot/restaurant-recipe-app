@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FirebaseError } from "firebase/app";
@@ -44,14 +44,30 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // A ref, not state — it must be true *synchronously* the instant
+  // handleSubmit starts, with no render/effect gap where the "already
+  // logged in" redirect below could still see it as false. currentUser
+  // flips non-null the moment createUserWithEmailAndPassword succeeds,
+  // independent of and typically before the profile-doc write below
+  // resolves; without this guard that transition looks identical to "a
+  // signed-in user navigated to /signup directly" and the effect races
+  // handleSubmit's own navigation (chunk 6.2).
+  const signupAttemptedRef = useRef(false);
+
   useEffect(() => {
-    if (!loading && currentUser) {
+    // Only meant for a user who lands on /signup while already
+    // authenticated. Once a signup attempt has started on this page
+    // instance, this effect must stay out of the way for good — the
+    // explicit navigation at the end of handleSubmit is the only thing
+    // allowed to leave this page from here on.
+    if (!loading && currentUser && !signupAttemptedRef.current) {
       router.replace("/dashboard");
     }
   }, [loading, currentUser, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    signupAttemptedRef.current = true;
     setError(null);
     setSubmitting(true);
     try {
@@ -80,10 +96,23 @@ export default function SignupPage() {
         await batch.commit();
       } catch (writeErr) {
         // Roll back the orphaned auth account so it doesn't end up with no profile doc.
+        let rollbackFailed = false;
         try {
           await deleteUser(credential.user);
         } catch {
-          // best-effort rollback only
+          rollbackFailed = true;
+        }
+        if (rollbackFailed) {
+          // The account still exists with no profile doc, and we couldn't
+          // clean it up either. signupAttemptedRef keeps the redirect
+          // effect above from sweeping this half-created user to
+          // /dashboard, where they'd hang on "Loading…" forever with no
+          // explanation — surface it plainly here instead and stay put.
+          setError(
+            "Your account was created but setup didn't finish, and we couldn't automatically clean it up. Please try logging in — if that doesn't work, contact support."
+          );
+          setSubmitting(false);
+          return;
         }
         throw writeErr;
       }
