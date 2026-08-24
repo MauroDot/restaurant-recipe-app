@@ -79,12 +79,17 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Password
-            </label>
+            <div className="mb-1 flex items-baseline justify-between">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                Password
+              </label>
+              <Link href="/password-reset" className="text-xs underline text-zinc-600 dark:text-zinc-400">
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"
