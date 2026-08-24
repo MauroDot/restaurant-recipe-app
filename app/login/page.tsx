@@ -7,6 +7,7 @@ import { FirebaseError } from "firebase/app";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/authContext";
+import AuthFooter from "@/components/AuthFooter";
 
 function mapAuthError(err: unknown): string {
   if (err instanceof FirebaseError) {
@@ -55,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-black">
+    <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-4 py-8 dark:bg-black">
       <div className="w-full max-w-sm rounded border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-black">
         <h1 className="mb-6 text-xl font-semibold text-black dark:text-zinc-50">
           Log in
@@ -118,6 +119,7 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+      <AuthFooter />
     </div>
   );
 }

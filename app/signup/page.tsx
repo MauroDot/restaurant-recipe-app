@@ -8,6 +8,7 @@ import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/authContext";
+import AuthFooter from "@/components/AuthFooter";
 
 const CUISINE_OPTIONS = [
   { value: "italian", label: "Italian" },
@@ -125,7 +126,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-black">
+    <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-4 py-8 dark:bg-black">
       <div className="w-full max-w-sm rounded border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-black">
         <h1 className="mb-6 text-xl font-semibold text-black dark:text-zinc-50">
           Sign up
@@ -224,6 +225,7 @@ export default function SignupPage() {
           </Link>
         </p>
       </div>
+      <AuthFooter />
     </div>
   );
 }
